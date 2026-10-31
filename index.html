@@ -1,0 +1,254 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SoloCash - Freelancer Finance</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f4f7f5;color:#1b3027;font-family:Arial,sans-serif}
+header{background:#15382a;color:white;padding:20px 5%;display:flex;justify-content:space-between;align-items:center}
+.logo{font-size:25px;font-weight:800}.logo span{color:#85dfad}
+main{max-width:1050px;margin:25px auto;padding:0 16px}
+h1{font-size:27px}h2{font-size:18px}
+button{border:0;border-radius:8px;padding:11px 15px;background:#176b4b;color:white;font-weight:bold;cursor:pointer}
+button.secondary{background:#e6eee8;color:#244936}
+input,select{width:100%;padding:12px;border:1px solid #d7e1da;border-radius:8px;background:white;font-size:15px}
+label{font-size:12px;color:#65766c;display:block;margin:10px 0 5px}
+.card,.panel{background:white;border:1px solid #e5ebe6;border-radius:13px;padding:18px;margin:14px 0}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.metric{font-size:24px;font-weight:bold;margin-top:8px}
+.muted{color:#77857c;font-size:13px}
+nav{display:flex;gap:7px;flex-wrap:wrap;margin:20px 0}
+nav button{background:#e6eee8;color:#244936}
+nav button.active{background:#176b4b;color:white}
+.section{display:none}.section.active{display:block}
+.fields{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+td,th{text-align:left;padding:11px 7px;border-bottom:1px solid #edf0ed}
+th{color:#78867e}
+.tablewrap{overflow-x:auto}
+#app{display:none}
+#auth{max-width:430px;margin:55px auto;padding:22px}
+#message{padding:12px;border-radius:8px;background:#edf5ef;margin:12px 0;font-size:13px;display:none}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.empty{padding:20px;text-align:center;color:#849087}
+@media(max-width:650px){.grid{grid-template-columns:repeat(2,1fr)}.fields{grid-template-columns:1fr}header{padding:17px}.metric{font-size:20px}}
+</style>
+</head>
+<body>
+<header>
+ <div class="logo">Solo<span>Cash</span></div>
+ <div id="userLabel" class="muted" style="color:#d5e5db"></div>
+</header>
+
+<div id="auth">
+ <div class="card">
+  <h1>Welcome to SoloCash</h1>
+  <p class="muted">Your freelance business finance workspace.</p>
+  <div id="message"></div>
+  <label>Email</label>
+  <input id="email" type="email" placeholder="you@example.com">
+  <label>Password</label>
+  <input id="password" type="password" placeholder="At least 6 characters">
+  <div style="display:flex;gap:8px;margin-top:18px">
+   <button onclick="signIn()">Log in</button>
+   <button class="secondary" onclick="signUp()">Create account</button>
+  </div>
+  <p class="muted">Confirm your email if requested.</p>
+ </div>
+</div>
+
+<main id="app">
+ <div class="row">
+  <div><h1 id="heading">Overview</h1><p class="muted">Your business finances, in one place.</p></div>
+  <button class="secondary" onclick="signOut()">Log out</button>
+ </div>
+ <nav>
+  <button class="active" data-tab="overview">Overview</button>
+  <button data-tab="clients">Clients</button>
+  <button data-tab="invoices">Invoices</button>
+  <button data-tab="transactions">Transactions</button>
+  <button data-tab="forecast">Forecast</button>
+ </nav>
+
+ <section id="overview" class="section active">
+  <div class="grid">
+   <div class="card"><div class="muted">Cash balance</div><div class="metric" id="balance">$0</div></div>
+   <div class="card"><div class="muted">Income this month</div><div class="metric" id="income">$0</div></div>
+   <div class="card"><div class="muted">Expenses this month</div><div class="metric" id="expenses">$0</div></div>
+   <div class="card"><div class="muted">Unpaid invoices</div><div class="metric" id="unpaid">$0</div></div>
+  </div>
+  <div class="panel"><h2>Outstanding invoices</h2><div id="outstanding"></div></div>
+  <div class="panel"><h2>Recent transactions</h2><div id="recent"></div></div>
+ </section>
+
+ <section id="clients" class="section">
+  <div class="panel">
+   <h2>Add client</h2>
+   <form id="clientForm">
+    <div class="fields">
+     <div><label>Client name</label><input name="name" required></div>
+     <div><label>Email</label><input name="email" type="email"></div>
+    </div>
+    <p><button>Add client</button></p>
+   </form>
+  </div>
+  <div class="panel"><h2>Your clients</h2><div id="clientList"></div></div>
+ </section>
+
+ <section id="invoices" class="section">
+  <div class="panel">
+   <h2>Create invoice record</h2>
+   <form id="invoiceForm">
+    <div class="fields">
+     <div><label>Invoice number</label><input name="number" required></div>
+     <div><label>Client</label><select name="client" id="clientSelect" required></select></div>
+     <div><label>Amount (USD)</label><input name="amount" type="number" min=".01" step=".01" required></div>
+     <div><label>Issue date</label><input name="issued" type="date" required></div>
+     <div><label>Due date</label><input name="due" type="date" required></div>
+    </div>
+    <p><button>Create invoice</button></p>
+   </form>
+  </div>
+  <div class="panel"><h2>Invoices</h2><div id="invoiceList"></div></div>
+ </section>
+
+ <section id="transactions" class="section">
+  <div class="panel">
+   <h2>Record transaction</h2>
+   <form id="transactionForm">
+    <div class="fields">
+     <div><label>Description</label><input name="description" required></div>
+     <div><label>Type</label><select name="type"><option value="income">Income</option><option value="expense">Expense</option></select></div>
+     <div><label>Amount (USD)</label><input name="amount" type="number" min=".01" step=".01" required></div>
+     <div><label>Date</label><input name="date" type="date" required></div>
+     <div><label>Category</label><input name="category"></div>
+    </div>
+    <p><button>Save transaction</button></p>
+   </form>
+  </div>
+  <div class="panel"><h2>Transaction history</h2><div id="transactionList"></div></div>
+ </section>
+
+ <section id="forecast" class="section">
+  <div class="panel">
+   <h2>Cash flow forecast</h2>
+   <p class="muted">Current balance plus unpaid invoices due within each period. Future expenses are not included.</p>
+   <div class="grid">
+    <div class="card"><div class="muted">Today</div><div class="metric" id="f0">$0</div></div>
+    <div class="card"><div class="muted">30 days</div><div class="metric" id="f30">$0</div></div>
+    <div class="card"><div class="muted">60 days</div><div class="metric" id="f60">$0</div></div>
+    <div class="card"><div class="muted">90 days</div><div class="metric" id="f90">$0</div></div>
+   </div>
+   <p class="muted">Estimates only, not financial advice.</p>
+  </div>
+ </section>
+</main>
+
+<script>
+const SUPABASE_URL="https://pxtxyheqbqyqjiodkxuv.supabase.co";
+const SUPABASE_KEY="sb_publishable_I-ZOx_RoLmbv8cib5u_c3g_vShMtW6m";
+const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+let user=null,clients=[],invoices=[],transactions=[];
+const today=()=>new Date().toISOString().slice(0,10);
+const money=n=>new Intl.NumberFormat("en-US",{style:"currency",currency:"USD"}).format(Number(n)||0);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function msg(s){let m=document.getElementById("message");m.textContent=s;m.style.display="block"}
+function showApp(){document.getElementById("auth").style.display="none";document.getElementById("app").style.display="block";document.getElementById("userLabel").textContent=user.email||"";loadData()}
+function showAuth(){document.getElementById("auth").style.display="block";document.getElementById("app").style.display="none"}
+async function signUp(){
+ let email=document.getElementById("email").value.trim(),password=document.getElementById("password").value;
+ if(!email||password.length<6)return msg("Enter a valid email and a password of at least 6 characters.");
+ let {error}=await db.auth.signUp({email,password});
+ if(error)return msg(error.message);
+ msg("Account created. Check your email for a confirmation link, then log in.");
+}
+async function signIn(){
+ let email=document.getElementById("email").value.trim(),password=document.getElementById("password").value;
+ let {data,error}=await db.auth.signInWithPassword({email,password});
+ if(error)return msg(error.message);
+ user=data.user;showApp();
+}
+async function signOut(){await db.auth.signOut();user=null;showAuth()}
+async function loadData(){
+ if(!user)return;
+ let [c,i,t]=await Promise.all([
+  db.from("clients").select("*").order("created_at",{ascending:false}),
+  db.from("invoices").select("*").order("issue_date",{ascending:false}),
+  db.from("transactions").select("*").order("transaction_date",{ascending:false})
+ ]);
+ if(c.error||i.error||t.error){alert((c.error||i.error||t.error).message);return}
+ clients=c.data;invoices=i.data;transactions=t.data;render();
+}
+function clientName(id){return clients.find(c=>c.id===id)?.name||"Unknown client"}
+function table(head,rows){if(!rows.length)return '<div class="empty">No records yet.</div>';return '<div class="tablewrap"><table><thead><tr>'+head.map(x=>'<th>'+x+'</th>').join("")+'</tr></thead><tbody>'+rows.join("")+'</tbody></table></div>'}
+function render(){
+ let bal=transactions.reduce((s,t)=>s+(t.type==="income"?1:-1)*Number(t.amount),0);
+ let month=today().slice(0,7);
+ let inc=transactions.filter(t=>t.type==="income"&&t.transaction_date.startsWith(month)).reduce((s,t)=>s+Number(t.amount),0);
+ let exp=transactions.filter(t=>t.type==="expense"&&t.transaction_date.startsWith(month)).reduce((s,t)=>s+Number(t.amount),0);
+ let unpaid=invoices.filter(i=>i.status==="unpaid").reduce((s,i)=>s+Number(i.amount),0);
+ document.getElementById("balance").textContent=money(bal);
+ document.getElementById("income").textContent=money(inc);
+ document.getElementById("expenses").textContent=money(exp);
+ document.getElementById("unpaid").textContent=money(unpaid);
+ let outstanding=invoices.filter(i=>i.status==="unpaid");
+ document.getElementById("outstanding").innerHTML=table(["Invoice","Client","Due","Amount"],outstanding.map(i=>`<tr><td>${esc(i.invoice_number)}</td><td>${esc(clientName(i.client_id))}</td><td>${esc(i.due_date)}</td><td>${money(i.amount)}</td></tr>`));
+ document.getElementById("recent").innerHTML=table(["Description","Date","Type","Amount"],transactions.slice(0,5).map(t=>`<tr><td>${esc(t.description)}</td><td>${esc(t.transaction_date)}</td><td>${esc(t.type)}</td><td>${money(t.amount)}</td></tr>`));
+ document.getElementById("clientList").innerHTML=table(["Client","Email"],clients.map(c=>`<tr><td>${esc(c.name)}</td><td>${esc(c.email||"—")}</td></tr>`));
+ document.getElementById("clientSelect").innerHTML='<option value="">Select client</option>'+clients.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join("");
+ document.getElementById("invoiceList").innerHTML=table(["Invoice","Client","Due","Amount","Status","Action"],invoices.map(i=>`<tr><td>${esc(i.invoice_number)}</td><td>${esc(clientName(i.client_id))}</td><td>${esc(i.due_date)}</td><td>${money(i.amount)}</td><td>${esc(i.status)}</td><td>${i.status==="unpaid"?`<button class="secondary" onclick="markPaid('${i.id}')">Mark paid</button>`:"Paid"}</td></tr>`));
+ document.getElementById("transactionList").innerHTML=table(["Description","Date","Category","Type","Amount"],transactions.map(t=>`<tr><td>${esc(t.description)}</td><td>${esc(t.transaction_date)}</td><td>${esc(t.category||"—")}</td><td>${esc(t.type)}</td><td>${money(t.amount)}</td></tr>`));
+ forecast(bal);
+}
+function forecast(bal){
+ [0,30,60,90].forEach(days=>{
+  let d=new Date();d.setDate(d.getDate()+days);let cutoff=d.toISOString().slice(0,10);
+  let expected=invoices.filter(i=>i.status==="unpaid"&&i.due_date>=today()&&i.due_date<=cutoff).reduce((s,i)=>s+Number(i.amount),0);
+  document.getElementById("f"+days).textContent=money(bal+expected);
+ });
+}
+document.getElementById("clientForm").addEventListener("submit",async e=>{
+ e.preventDefault();let f=new FormData(e.target);
+ let {error}=await db.from("clients").insert({user_id:user.id,name:f.get("name").trim(),email:f.get("email").trim()||null});
+ if(error)return alert(error.message);e.target.reset();loadData();
+});
+document.getElementById("invoiceForm").addEventListener("submit",async e=>{
+ e.preventDefault();let f=new FormData(e.target);
+ if(f.get("due")<f.get("issued"))return alert("Due date must be on or after issue date.");
+ let {error}=await db.from("invoices").insert({user_id:user.id,invoice_number:f.get("number").trim(),client_id:f.get("client"),amount:Number(f.get("amount")),issue_date:f.get("issued"),due_date:f.get("due"),status:"unpaid"});
+ if(error)return alert(error.message);e.target.reset();loadData();
+});
+document.getElementById("transactionForm").addEventListener("submit",async e=>{
+ e.preventDefault();let f=new FormData(e.target);
+ let {error}=await db.from("transactions").insert({user_id:user.id,description:f.get("description").trim(),type:f.get("type"),amount:Number(f.get("amount")),transaction_date:f.get("date"),category:f.get("category").trim()||null});
+ if(error)return alert(error.message);e.target.reset();loadData();
+});
+async function markPaid(id){
+ let inv=invoices.find(i=>i.id===id);if(!inv||inv.status!=="unpaid")return;
+ if(!confirm("Mark invoice as paid and record the payment?"))return;
+ let {error}=await db.from("invoices").update({status:"paid"}).eq("id",id);
+ if(error)return alert(error.message);
+ let result=await db.from("transactions").insert({user_id:user.id,invoice_id:id,description:"Payment: "+inv.invoice_number,type:"income",amount:Number(inv.amount),transaction_date:today(),category:"Invoice payment"});
+ if(result.error)alert("Invoice marked paid, but payment transaction could not be recorded: "+result.error.message);
+ loadData();
+}
+document.querySelectorAll("nav button").forEach(b=>b.addEventListener("click",()=>{
+ document.querySelectorAll("nav button").forEach(x=>x.classList.remove("active"));
+ document.querySelectorAll(".section").forEach(x=>x.classList.remove("active"));
+ b.classList.add("active");document.getElementById(b.dataset.tab).classList.add("active");
+ document.getElementById("heading").textContent=b.textContent;
+}));
+(async()=>{
+ const {data}=await db.auth.getSession();
+ if(data.session){user=data.session.user;showApp()}
+ db.auth.onAuthStateChange((_event,session)=>{
+  if(session){user=session.user;showApp()}else{user=null;showAuth()}
+ });
+})();
+</script>
+</body>
+</html>
